@@ -70,20 +70,22 @@ export default function App() {
       try {
         // In production, this will be served from your GitHub Pages
         // During development, you might need to adjust the path
-        const response = await fetch('/hackerrank_data.json');
+        const response = await fetch(
+          "${import.meta.env.BASE_URL}hackerrank_data.json?v=${Date.now()}"
+        );
         const data = await response.json();
-        
+
         // Set submissions count data
         setCounts(data.submissions || {});
-        
+
         // Set username
         setUsername(data.username || "");
-        
+
         // Set account creation date
         if (data.metadata && data.metadata.createdAt) {
           setCreatedAt(new Date(data.metadata.createdAt + "T00:00:00Z"));
         }
-        
+
         setLoading(false);
       } catch (error) {
         console.error("Error loading HackerRank data:", error);
@@ -157,7 +159,13 @@ export default function App() {
         <div>
           <h1 className="title">HackerRank Activity</h1>
           {username && (
-            <div style={{ color: "var(--muted)", fontSize: "14px", marginTop: "4px" }}>
+            <div
+              style={{
+                color: "var(--muted)",
+                fontSize: "14px",
+                marginTop: "4px",
+              }}
+            >
               @{username} • {totalInRange} submissions in selected range
             </div>
           )}
