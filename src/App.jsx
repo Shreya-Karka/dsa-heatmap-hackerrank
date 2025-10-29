@@ -71,7 +71,7 @@ export default function App() {
         // In production, this will be served from your GitHub Pages
         // During development, you might need to adjust the path
         const response = await fetch(
-          "${import.meta.env.BASE_URL}hackerrank_data.json?v=${Date.now()}"
+          `${import.meta.env.BASE_URL}hackerrank_data.json?v=${Date.now()}`
         );
         const data = await response.json();
 
