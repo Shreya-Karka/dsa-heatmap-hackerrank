@@ -1,0 +1,44 @@
+name: Update HackerRank Data
+
+on:
+  # Run daily at 00:00 UTC
+  schedule:
+    - cron: '0 0 * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+  
+  # Run on push to main (for testing)
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/update-data.yml'
+      - 'fetch_hackerrank_data.py'
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 lxml
+      
+      - name: Fetch HackerRank data
+        run: |
+          python fetch_hackerrank_data.py ${{ secrets.HACKERRANK_USERNAME }}
+      
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add hackerrank_data.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Update HackerRank data - $(date +'%Y-%m-%d %H:%M:%S')" && git push)

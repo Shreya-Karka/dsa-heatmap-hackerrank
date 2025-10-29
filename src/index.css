@@ -1,0 +1,36 @@
+:root {
+  --bg: #0b0f14;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+
+  /* LeetCode-ish blues */
+  --c0-bg: #4a5164;
+  --c0-br: #2d384b;
+  --c1-bg: #0b2447;
+  --c1-br: #102a56;
+  --c2-bg: #123165;
+  --c2-br: #163b78;
+  --c3-bg: #19407e;
+  --c3-br: #1e4991;
+  --c4-bg: #21509a;
+  --c4-br: #2759ad;
+
+  --out-bg: #4a5164;
+  --out-br: #4a5164;
+  --future: #111827;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}

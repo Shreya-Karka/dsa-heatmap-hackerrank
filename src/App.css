@@ -1,0 +1,140 @@
+.page {
+  min-height: 100vh;
+  padding: 28px 24px 40px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+.title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.leetcode-strip {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.month-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.month-grid {
+  display: flex;
+  gap: 3px;
+}
+
+.week-col {
+  display: grid;
+  grid-template-rows: repeat(7, 11px);
+  row-gap: 3px;
+}
+
+.cell {
+  width: 11px;
+  height: 11px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+.cell-out {
+  background: var(--out-bg);
+  border-color: var(--out-br);
+}
+.cell-future {
+  background: var(--future);
+  border-color: #0b1220;
+}
+
+.cell0 {
+  background: var(--c0-bg);
+  border-color: var(--c0-br);
+}
+.cell1 {
+  background: var(--c1-bg);
+  border-color: var(--c1-br);
+}
+.cell2 {
+  background: var(--c2-bg);
+  border-color: var(--c2-br);
+}
+.cell3 {
+  background: var(--c3-bg);
+  border-color: var(--c3-br);
+}
+.cell4 {
+  background: var(--c4-bg);
+  border-color: var(--c4-br);
+}
+
+.month-name {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.legend {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+.legend .cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.gap {
+  width: 11px;
+  height: 11px;
+  visibility: hidden;
+}
+
+.range-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.range-label {
+  color: #94a3b8;
+  font-size: 14px;
+}
+.range-select {
+  appearance: none;
+  background: #0e1521;
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 28px 6px 10px;
+  font-size: 14px;
+  outline: none;
+}
+.range-select:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.range-select:focus {
+  box-shadow: 0 0 0 2px rgba(125, 165, 255, 0.25);
+}
+
+.cell-disabled {
+  background: #202733;
+  border-color: #2a3446;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
