@@ -1,106 +1,173 @@
 #!/usr/bin/env python3
 """
-HackerRank Submission Scraper
-Fetches submission history from HackerRank profile page and saves to JSON
+HackerRank Submission Scraper - Updated for 2025 API
+Uses the correct /rest/contests/master/submissions endpoint
 """
 
 import requests
-from bs4 import BeautifulSoup
 import json
-import re
 from datetime import datetime
 from collections import defaultdict
 import sys
+import time
 
-def fetch_hackerrank_submissions(username):
+def fetch_all_submissions(username):
     """
-    Scrape HackerRank submissions from user profile
-    Returns: dict of {date: count} submissions
+    Fetch all submissions using the working API endpoint
     """
+    print(f"\n{'='*60}")
+    print(f"Fetching submissions for: {username}")
+    print(f"{'='*60}")
     
-    # HackerRank profile URL
-    profile_url = f"https://www.hackerrank.com/rest/hackers/{username}/recent_challenges"
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Referer': f'https://www.hackerrank.com/profile/{username}',
     }
     
-    try:
-        # Fetch recent challenges
-        response = requests.get(profile_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        # Parse submissions by date
-        submissions_by_date = defaultdict(int)
-        
-        if 'models' in data:
-            for challenge in data['models']:
-                # Get last submission time
-                if 'last_submitted_at' in challenge and challenge['last_submitted_at']:
-                    timestamp = challenge['last_submitted_at']
-                    # Convert timestamp to date
-                    date = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
-                    submissions_by_date[date] += 1
-        
-        # Also try to get more data from submissions endpoint
-        submissions_url = f"https://www.hackerrank.com/rest/hackers/{username}/submissions"
-        try:
-            sub_response = requests.get(submissions_url, headers=headers, timeout=10)
-            if sub_response.status_code == 200:
-                sub_data = sub_response.json()
-                if 'models' in sub_data:
-                    for submission in sub_data['models']:
-                        if 'created_at' in submission and submission['created_at']:
-                            timestamp = submission['created_at']
-                            date = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
-                            # Avoid double counting - only add if not already counted
-                            if date not in submissions_by_date:
-                                submissions_by_date[date] += 1
-        except:
-            pass  # Submissions endpoint might not be available
-        
-        return dict(submissions_by_date)
+    submissions_by_date = defaultdict(int)
+    all_submissions = []
     
-    except requests.RequestException as e:
-        print(f"Error fetching data from HackerRank: {e}", file=sys.stderr)
-        return {}
+    # Fetch in batches
+    offset = 0
+    limit = 100  # Fetch 100 at a time
+    total_fetched = 0
+    
+    while True:
+        url = f"https://www.hackerrank.com/rest/contests/master/submissions?offset={offset}&limit={limit}"
+        
+        print(f"\nFetching batch: offset={offset}, limit={limit}")
+        
+        try:
+            # Add cookies to simulate browser request
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=15,
+                cookies={'hackerrank_mixpanel_token': username}
+            )
+            
+            print(f"Status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"⚠️  API returned status {response.status_code}")
+                break
+            
+            data = response.json()
+            
+            # Check if we have models (submissions)
+            if 'models' not in data or len(data['models']) == 0:
+                print("✓ No more submissions to fetch")
+                break
+            
+            batch_size = len(data['models'])
+            print(f"✓ Fetched {batch_size} submissions")
+            
+            # Process this batch
+            for submission in data['models']:
+                all_submissions.append(submission)
+                
+                # Extract timestamp
+                timestamp = None
+                if 'created_at' in submission:
+                    timestamp = submission['created_at']
+                elif 'time_from_now' in submission:
+                    # Skip relative time entries
+                    continue
+                
+                if timestamp:
+                    try:
+                        # Convert Unix timestamp to date
+                        date = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+                        submissions_by_date[date] += 1
+                        
+                        # Show progress every 20 submissions
+                        if total_fetched % 20 == 0:
+                            print(f"  Processing... {total_fetched} submissions so far")
+                    except Exception as e:
+                        print(f"  ⚠️  Error processing timestamp {timestamp}: {e}")
+            
+            total_fetched += batch_size
+            
+            # Check if there are more pages
+            if 'total' in data and total_fetched >= data['total']:
+                print(f"✓ Reached total: {data['total']}")
+                break
+            
+            if batch_size < limit:
+                print(f"✓ Last batch (only {batch_size} items)")
+                break
+            
+            # Move to next batch
+            offset += limit
+            
+            # Be nice to HackerRank servers
+            time.sleep(0.5)
+            
+            # Safety limit: stop after 500 submissions
+            if total_fetched >= 500:
+                print(f"✓ Reached safety limit (500 submissions)")
+                break
+        
+        except requests.RequestException as e:
+            print(f"❌ Network error: {e}")
+            break
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON decode error: {e}")
+            break
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
+            break
+    
+    print(f"\n{'='*60}")
+    print(f"✓ Total submissions fetched: {total_fetched}")
+    print(f"✓ Unique dates with activity: {len(submissions_by_date)}")
+    print(f"{'='*60}")
+    
+    return dict(submissions_by_date)
 
 def fetch_profile_metadata(username):
     """
-    Fetch user profile metadata (creation date, etc.)
+    Try to fetch profile metadata (account creation date, etc.)
     """
-    profile_url = f"https://www.hackerrank.com/rest/hackers/{username}/profile"
+    print(f"\nAttempting to fetch profile metadata...")
+    
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
     
-    try:
-        response = requests.get(profile_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        metadata = {}
-        if 'model' in data:
-            # Extract account creation date
-            if 'created_at' in data['model']:
-                timestamp = data['model']['created_at']
-                metadata['createdAt'] = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
-            
-            # Add other useful info
-            if 'name' in data['model']:
-                metadata['name'] = data['model']['name']
-            if 'country' in data['model']:
-                metadata['country'] = data['model']['country']
-        
-        return metadata
+    # Try the profile API
+    url = f"https://www.hackerrank.com/rest/hackers/{username}/profile"
     
-    except requests.RequestException as e:
-        print(f"Error fetching profile metadata: {e}", file=sys.stderr)
-        return {}
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            metadata = {}
+            
+            if 'model' in data:
+                if 'created_at' in data['model']:
+                    timestamp = data['model']['created_at']
+                    metadata['createdAt'] = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+                    print(f"✓ Account created: {metadata['createdAt']}")
+                
+                if 'name' in data['model']:
+                    metadata['name'] = data['model']['name']
+                    print(f"✓ Name: {metadata['name']}")
+            
+            return metadata
+        else:
+            print(f"⚠️  Profile API returned {response.status_code}")
+    
+    except Exception as e:
+        print(f"⚠️  Could not fetch profile metadata: {e}")
+    
+    return {}
 
 def merge_submission_data(old_data, new_data):
     """
-    Merge old and new submission data, keeping the maximum count for each date
+    Merge old and new submission data, keeping the highest count
     """
     merged = old_data.copy()
     for date, count in new_data.items():
@@ -116,27 +183,36 @@ def main():
         sys.exit(1)
     
     username = sys.argv[1]
-    print(f"Fetching data for HackerRank user: {username}")
     
-    # Load existing data if available
+    print(f"\n{'#'*60}")
+    print(f"# HACKERRANK DATA FETCHER")
+    print(f"# Username: {username}")
+    print(f"# Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"{'#'*60}")
+    
+    # Load existing data
     try:
         with open('hackerrank_data.json', 'r') as f:
             existing_data = json.load(f)
             old_submissions = existing_data.get('submissions', {})
             old_metadata = existing_data.get('metadata', {})
+            print(f"\n✓ Loaded existing data: {len(old_submissions)} dates")
     except FileNotFoundError:
         old_submissions = {}
         old_metadata = {}
+        print(f"\n✓ Starting fresh (no existing data)")
     
-    # Fetch new data
-    new_submissions = fetch_hackerrank_submissions(username)
+    # Fetch new submissions
+    new_submissions = fetch_all_submissions(username)
+    
+    # Fetch metadata
     metadata = fetch_profile_metadata(username)
     
     # Merge data
     merged_submissions = merge_submission_data(old_submissions, new_submissions)
     merged_metadata = {**old_metadata, **metadata}
     
-    # Prepare output
+    # Create output
     output = {
         'username': username,
         'lastUpdated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -144,13 +220,31 @@ def main():
         'submissions': merged_submissions
     }
     
-    # Save to JSON
+    # Save to file
     with open('hackerrank_data.json', 'w') as f:
         json.dump(output, f, indent=2)
     
-    print(f"✓ Fetched {len(new_submissions)} dates from recent submissions")
-    print(f"✓ Total dates in database: {len(merged_submissions)}")
-    print(f"✓ Data saved to hackerrank_data.json")
+    # Final summary
+    print(f"\n{'#'*60}")
+    print(f"# RESULTS")
+    print(f"{'#'*60}")
+    print(f"New submissions fetched: {len(new_submissions)} dates")
+    print(f"Total dates in database: {len(merged_submissions)}")
+    print(f"Data saved to: hackerrank_data.json")
+    print(f"{'#'*60}")
+    
+    # Show sample of recent dates
+    if merged_submissions:
+        print(f"\nMost recent submission dates:")
+        for date in sorted(merged_submissions.keys(), reverse=True)[:10]:
+            count = merged_submissions[date]
+            print(f"  {date}: {count} submission(s)")
+    else:
+        print(f"\n⚠️  WARNING: No submission data found!")
+        print(f"   Please verify your username: {username}")
+        print(f"   Profile should be at: https://www.hackerrank.com/profile/{username}")
+    
+    print()
 
 if __name__ == "__main__":
     main()
