@@ -1,20 +1,15 @@
 name: Update HackerRank Data
-
 on:
-  # Run daily at 00:00 UTC
   schedule:
     - cron: '0 0 * * *'
-  
-  # Allow manual trigger
   workflow_dispatch:
-  
-  # Run on push to main (for testing)
   push:
-    branches: [ main ]
+    branches: [ hackerrank ]  # Changed from main
     paths:
       - '.github/workflows/update-data.yml'
       - 'fetch_hackerrank_data.py'
-
+permissions:
+  contents: write
 jobs:
   update-data:
     runs-on: ubuntu-latest
@@ -22,6 +17,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -40,5 +38,17 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          
+          # Pull latest changes first to avoid conflicts
+          git pull --rebase origin hackerrank  # Changed from main
+          
+          # Add and commit if there are changes
           git add hackerrank_data.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Update HackerRank data - $(date +'%Y-%m-%d %H:%M:%S')" && git push)
+          
+          # Only commit and push if there are actual changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🤖 Update HackerRank data - $(date +'%Y-%m-%d %H:%M:%S')"
+            git push origin hackerrank  # Changed from main
+          fi
